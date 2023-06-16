@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 //Rxjs
-import {pipe, of } from 'rxjs'; //Obs
+import {pipe, of, interval, BehaviorSubject, ReplaySubject } from 'rxjs'; //Obs
 import {Observable, Observer, fromEvent} from 'rxjs';
-import {delay, filter, map, tap, scan, mergeMap} from 'rxjs/operators'; //Opers
+import {delay, filter, map, tap, scan, mergeMap, skipUntil, shareReplay, catchError} from 'rxjs/operators'; //Opers
 import {ajax} from 'rxjs/ajax';
+import * as internal from 'stream';
 
 
 @Component({
@@ -14,6 +15,8 @@ import {ajax} from 'rxjs/ajax';
 export class AppComponent implements OnInit {
 
   title = 'my-project';
+
+  ngOnInit(): void { }
 
   /*******************[ 07 APIs Map - MergeMap ]*********************/
 
@@ -50,6 +53,122 @@ export class AppComponent implements OnInit {
       ),
     ).subscribe(console.log);
 
-  ngOnInit(): void { }
+
+  /*******************[ 08 operatiosn de "SkipUtil" y "ShareReplay" ]*********************/
+
+  obsInterval$ = interval(2000);
+
+  emitAfterClick = this.obsInterval$
+  .pipe(
+    //Si no hay cambios no emito.
+    skipUntil(this.click$),
+  )
+  .subscribe(
+    v => console.log(` emitAfterClick ${v}`)
+  );
+
+
+  emitAndShare = this.obsInterval$
+    .pipe(
+      //te voy a dar el ultimo dato emitido
+      shareReplay()
+    );
+
+  funPrimer(){
+      this.emitAndShare.subscribe(
+        v => console.log(`emitAndShare No1 : ${v}`)
+      );
+  }
+
+  funSegundo(){
+    this.emitAndShare.subscribe(
+      v => console.log(`emitAndShare No2 : ${v}`)
+    );
+  }
+
+  /*******************[ 09 "CatchError Rxjs" ]*********************/
+
+  //Errores en Rxjs
+
+  obsErrores$ = of("Welcome Gente","Como estan?","Hola Gente");
+
+  obsErroresPipe = this.obsErrores$.pipe(
+    map(
+      (v) => {
+        if(v ==="Hola Gente"){
+          throw "Saludo Incorrecto";
+        }
+        return v;
+      }
+    ),
+    catchError(
+      (err) => {
+        throw "Error: "+ err;
+      }
+    ),
+  );
+
+  funErrorCatch(){
+    this.obsErroresPipe.subscribe(
+      (x) => console.log(`next: `+x),
+      (err) => console.log(`err: `+err),
+    );
+  }
+
+  /*******************[ 10 "BehaviorSubject y ReplaySubject" ]*********************/
+
+  //Emite el ultimo valor a cada nueva de subscriptions
+  obsSaludos$ = new BehaviorSubject("Primer Valor Welcome inicio");
+
+  obsData$ = of(1,2,3,4,5,6,7,8,9,);
+
+  funBehaviorSubject(){
+
+    this.obsSaludos$.subscribe(
+      (v) => {
+        console.log(`1er Saludo: "${v}"`);
+      }
+    );
+
+    this.obsData$.subscribe(
+      (x) =>{
+        this.obsSaludos$.next(`obsData dt: New ${x}`);
+      }
+    );
+
+    this.obsSaludos$.subscribe(
+      (v) => {
+        console.log(`Ultimo Saludo:  "${v}"`);
+      }
+    );
+  }
+
+  //Te permite generar desde el incio hasta el final, para cada nueva subcriptions
+  obsSaludosreplay$ = new ReplaySubject();
+
+  funReplaySubject(){
+
+    this.obsSaludosreplay$.subscribe(
+      (v) => {
+        console.log(`1er Saludo: "${v}"`);
+      }
+    );
+
+    this.obsData$.subscribe(
+      (x) =>{
+        this.obsSaludosreplay$.next(`obsData dt: New ${x}`);
+      }
+    );
+
+    this.obsSaludosreplay$.subscribe(
+      (v) => {
+        console.log(`Ultimo Saludo:  "${v}"`);
+      }
+    );
+  }
+
+  /*******************[ 11 "Testing" ]*********************/
+
+
 
 }
